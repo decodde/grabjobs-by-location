@@ -113,10 +113,10 @@ func GetLocationData(res http.ResponseWriter, req *http.Request) {
 
 }
 
-func calculateRadius(lat float64,  distance float64, long float64) models.RadiusLocation {
+func calculateRadiusBounds(lat float64,  distance float64, long float64) models.RadiusLocation {
 	//Assuming data is in radians and not degrees
 	
-
+	if distance > 0 {
 	var EARTH_RADIUS_KM = 6371.01     // Earth's radius in km
 	//var EARTH_RADIUS_MI = 3958.762079 // Earth's radius in miles
 	var MAX_LAT = 3.142 / 2           // 90 degrees
@@ -151,6 +151,11 @@ func calculateRadius(lat float64,  distance float64, long float64) models.Radius
 	}
 	return models.RadiusLocation{
 		MaxLongitude: maxLon, MaxLatitude: maxLat, MinLongitude: minLon, MinLatitude: minLat,
+	}
+	}else{
+		return models.RadiusLocation{
+			MaxLongitude: long, MaxLatitude: lat, MinLongitude: long, MinLatitude: lat,
+		}
 	}
 }
 
