@@ -7,15 +7,11 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	locationData "grabjobs-by-location/models"
 
 )
 
-type locationData struct {
-	Title     string `json:"title"`
-	Latitude  string `json:"latitude"`
-	Longitude string `json:"longitude"`
-}
-var LocationData []locationData
+var LocationData []locationData.LocationData
 
 
 func PrepareDatabase () {
@@ -23,19 +19,19 @@ func PrepareDatabase () {
 }
 
 
-func createLocationData(data [][]string) []locationData {
-	var locationList []locationData
+func createLocationData(data [][]string) []locationData.LocationData {
+	var locationList []locationData.LocationData
 	for i, line := range data {
 		if i > 0 { // omit header line
-			var rec locationData
+			var rec locationData.LocationData
 			for j, field := range line {
 				if j == 0 {
 					rec.Title = field
 				} else if j == 1 {
-					rec.Latitude = field
+					rec.Longitude = field
 				} else if j == 2 {
 					var err error
-					rec.Longitude = field
+					rec.Latitude = field
 					//err = strconv.Atoi(field)
 					if err != nil {
 						continue
@@ -48,8 +44,9 @@ func createLocationData(data [][]string) []locationData {
 	return locationList
 }
 
-func FetchDB () {
+func FetchDB () []locationData.LocationData {
 	//LocationData
+	return LocationData
 }
 
 func readCSV() {

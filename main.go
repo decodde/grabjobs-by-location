@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	//"github.com/gorilla/handlers"
+	"github.com/rs/cors"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -11,35 +13,31 @@ import (
 	//"strconv"
 )
 
-var db = ""
-
-// Existing code from above
 func handleRequests() {
-	// creates a new instance of a mux router
 	
 	myRouter := mux.NewRouter().StrictSlash(true)
-	// replace http.HandleFunc with myRouter.HandleFunc
-	//myRouter.HandleFunc("/",)
+	
 	myRouter.HandleFunc("/near_by", controllers.SearchLatitude).Methods("GET")
-	//myRouter.HandleFunc("/all", returnAllArticles)
-	// finally, instead of passing in nil, we want
-	// to pass in our newly created router as the second
-	// argument
-	log.Fatal(http.ListenAndServe(":10000", myRouter))
+	myRouter.HandleFunc("/all_data", controllers.GetLocationData).Methods("GET")
+	myRouter.HandleFunc("/test", controllers.Test).Methods("GET")
+	myRouter.HandleFunc("/calculateRadius", controllers.CalculateRadius).Methods("GET")
+	
+	//handle cors acces
+	c := cors.New(cors.Options{
+        AllowedOrigins: []string{"*"},
+        AllowCredentials: true,
+    })
+	handler := c.Handler(myRouter)
+
+	log.Fatal(http.ListenAndServe(":10000", handler))
 }
 
 
 
 func main() {
 	fmt.Println("GrabsJobs - By Location")
-	/*Articles = []Article{
-	    Article{Title: "Hello", Desc: "Article Description", Content: "Article Content"},
-	    Article{Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
-	}*/
+	
 	processDb()
-	//fmt.Println("------------------------------------")
-	//fmt.Println(db)
-	//fmt.Println("------------------------------------")
 	handleRequests()
 
 }
