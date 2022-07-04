@@ -15,6 +15,15 @@ import (
 	"grabjobs-by-location/models"
 )
 
+var EARTH_RADIUS_KM = 6371.01 // Earth's radius in km
+//var EARTH_RADIUS_MI = 3958.762079 // Earth's radius in miles
+var MAX_LAT = 3.142 / 2         // 90 degrees
+var MIN_LAT = -MAX_LAT          // -90 degrees
+var MAX_LON = 3.142             // 180 degrees
+var MIN_LON = -MAX_LON          // -180 degrees
+var FULL_CIRCLE_RAD = 3.142 * 2 // Full cirle (360 degrees) in radians
+var radius = EARTH_RADIUS_KM
+
 func Test(res http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(res).Encode(models.Response{
 		Message: "true", Success: true,
@@ -22,12 +31,12 @@ func Test(res http.ResponseWriter, req *http.Request) {
 }
 func SearchLatitude(res http.ResponseWriter, req *http.Request) {
 	vars := req.URL.Query()
-	fmt.Println(vars)
+
 	lat := vars.Get("lat")
 	long := vars.Get("lng")
 	title := vars.Get("title")
 	radius := vars.Get("radius")
-	fmt.Print("Requesting data on " + radius)
+	fmt.Print("Requesting data on " + lat)
 
 	//getting db from memory
 	var a = csvToDb.FetchDB()
@@ -62,42 +71,79 @@ func SearchLatitude(res http.ResponseWriter, req *http.Request) {
 		}
 		var _filter1 []models.LocationData
 
-		//CONVERT STRINGS To FLOAT
-		_lat, e := strconv.ParseFloat(lat, 64)
-		_long, e := strconv.ParseFloat(long, 64)
-		_radius, e := strconv.ParseFloat(radius, 64)
+		if lat != "" {
 
-		if e != nil {
-			json.NewEncoder(res).Encode(models.Response{
-				Success: false, Error: e, Message: "Conversion error",
-			})
-		}
+			//CONVERT STRINGS To FLOAT
+			_lat, e := strconv.ParseFloat(lat, 64)
+			_long, e := strconv.ParseFloat(long, 64)
+			_radius, e := strconv.ParseFloat(radius, 64)
 
-		var bounds = calculateRadiusBounds(_lat, _radius, _long)
-		if _lat >= 0 {
-			fmt.Print("filtering latitude")
-			fmt.Println(lat)
+			if e != nil {
+				json.NewEncoder(res).Encode(models.Response{
+					Success: false, Error: e, Message: "Conversion error",
+				})
+				return
+			}
+
+			var bounds = calculateRadiusBounds(_lat, _radius, _long, false)
+			//fmt.Print("filtering latitude")
+			//fmt.Println(lat)
 			_filter1 = goterators.Filter(filteredResult, func(i models.LocationData) bool {
-				_currentLatitude,e := strconv.ParseFloat(i.Latitude,64)
-				_currentLongitude,e := strconv.ParseFloat(i.Longitude,64)
-				fmt.Println(e)
+				_currentLatitude, e := strconv.ParseFloat(i.Latitude, 64)
+				_currentLongitude, e := strconv.ParseFloat(i.Longitude, 64)
+				//fmt.Println(e)
+				if e != nil {
+					json.NewEncoder(res).Encode(models.Response{
+						Success: false, Error: e, Message: "Conversion error",
+					})
+					
+				}
 
-				if ((_currentLatitude >= bounds.MinLatitude && _currentLatitude <= bounds.MaxLatitude) &&  (_currentLongitude >= bounds.MinLongitude && _currentLongitude <= bounds.MaxLongitude)) {
-					
-					return true
+				/*fmt.Println("------------------------------------")
+				fmt.Println(_currentLatitude, " min : ", bounds.MinLatitude, " max : ", bounds.MaxLatitude, _lat)
+				fmt.Println(_currentLongitude, " min : ", bounds.MinLongitude, " max : ", bounds.MaxLongitude, _long)
+				fmt.Println(_currentLatitude >= bounds.MinLatitude)
+				fmt.Println(_currentLatitude <= bounds.MaxLatitude)
+				fmt.Println(_currentLongitude <= bounds.MaxLongitude)
+				fmt.Println(_currentLongitude >= bounds.MinLongitude)
+				fmt.Println("------------------------------------")*/
+
+				if _currentLatitude >= bounds.MinLatitude && _currentLatitude <= bounds.MaxLatitude {
+
+					/*fmt.Println("------------------------------------")
+					fmt.Println("Latitude this")
+					fmt.Println(_currentLatitude, bounds.MinLatitude, bounds.MaxLatitude)
+					fmt.Println("------------------------------------")*/
+
+					if _currentLongitude >= bounds.MinLongitude && _currentLongitude <= bounds.MaxLongitude {
+						return true
+					} else {
+						/*fmt.Println("------------------------------------")
+						fmt.Println("Passed Latitude test but not this")
+						fmt.Println(_currentLongitude, bounds.MinLongitude, bounds.MaxLongitude)
+						fmt.Println("------------------------------------")
+						*/
+						return false
+					}
 				} else {
-					
+
 					return false
 				}
 			})
-			fmt.Println(_filter1)
+			//fmt.Println(_filter1)
+			dataLength := len(_filter1)
 
+			json.NewEncoder(res).Encode(models.Response{
+				Success: true, Message: "Data retrieved successfully", Data: _filter1, DataLength: dataLength,
+			})
+			return
 		}
-		dataLength := len(_filter1)
+		dataLength := len(filteredResult)
 
 		json.NewEncoder(res).Encode(models.Response{
-			Success: true, Message: "Data retrieved successfully", Data: _filter1, DataLength: dataLength,
+			Success: true, Message: "Data retrieved successfully", Data: filteredResult, DataLength: dataLength,
 		})
+		return
 	}
 
 }
@@ -112,18 +158,15 @@ func GetLocationData(res http.ResponseWriter, req *http.Request) {
 
 }
 
-func calculateRadiusBounds(lat float64, distance float64, long float64) models.RadiusLocation {
-	//Assuming data is in radians and not degrees
+func calculateRadiusBounds(lat float64, distance float64, long float64, inRadians bool) models.RadiusLocation {
+	//Adding check for radians or degree and ensurig degreee is used
 
+	if !inRadians {
+		lat = degreesToRadian(lat)
+		long = degreesToRadian(long)
+	}
 	if distance > 0 {
-		var EARTH_RADIUS_KM = 6371.01 // Earth's radius in km
-		//var EARTH_RADIUS_MI = 3958.762079 // Earth's radius in miles
-		var MAX_LAT = 3.142 / 2         // 90 degrees
-		var MIN_LAT = -MAX_LAT          // -90 degrees
-		var MAX_LON = 3.142             // 180 degrees
-		var MIN_LON = -MAX_LON          // -180 degrees
-		var FULL_CIRCLE_RAD = 3.142 * 2 // Full cirle (360 degrees) in radians
-		var radius = EARTH_RADIUS_KM
+
 		var radDist float64 = distance / radius
 		var minLat = lat - float64(radDist)
 		var maxLat = lat + float64(radDist)
@@ -148,9 +191,17 @@ func calculateRadiusBounds(lat float64, distance float64, long float64) models.R
 			minLon = MIN_LON
 			maxLon = MAX_LON
 		}
-		return models.RadiusLocation{
-			MaxLongitude: maxLon, MaxLatitude: maxLat, MinLongitude: minLon, MinLatitude: minLat,
+
+		if !inRadians {
+			return models.RadiusLocation{
+				MaxLongitude: radianToDegrees(maxLon), MaxLatitude: radianToDegrees(maxLat), MinLongitude: radianToDegrees(minLon), MinLatitude: radianToDegrees(minLat),
+			}
+		} else {
+			return models.RadiusLocation{
+				MaxLongitude: long, MaxLatitude: lat, MinLongitude: long, MinLatitude: lat,
+			}
 		}
+
 	} else {
 		return models.RadiusLocation{
 			MaxLongitude: long, MaxLatitude: lat, MinLongitude: long, MinLatitude: lat,
@@ -173,6 +224,16 @@ func CalculateRadius(res http.ResponseWriter, req *http.Request) {
 	fmt.Print(e)
 	fmt.Print(distance)
 
-	json.NewEncoder(res).Encode(calculateRadiusBounds(_lat, _radius, _long))
+	json.NewEncoder(res).Encode(calculateRadiusBounds(_lat, _radius, _long, false))
 }
 
+func radianToDegrees(value float64) float64 {
+	var RAD2DEG = 180 / 3.142 // radians to degrees conversion
+
+	return value * RAD2DEG
+}
+func degreesToRadian(value float64) float64 {
+	var DEG2RAD = 3.142 / 180 // degrees to radian conversion
+
+	return value * DEG2RAD
+}

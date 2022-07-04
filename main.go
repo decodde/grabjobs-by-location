@@ -10,7 +10,7 @@ import (
 
 	"grabjobs-by-location/controllers"
 	"grabjobs-by-location/misc"
-	//"strconv"
+	"os"
 )
 
 func handleRequests() {
@@ -28,8 +28,8 @@ func handleRequests() {
         AllowCredentials: true,
     })
 	handler := c.Handler(myRouter)
-
-	log.Fatal(http.ListenAndServe(":10000", handler))
+	port := os.Getenv("PORT")
+	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
 
 
