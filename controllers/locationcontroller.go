@@ -45,7 +45,7 @@ func SearchLatitude(res http.ResponseWriter, req *http.Request) {
 	//if yes, filter off by title; before lat and long
 	//or we could take it as far as considering the order of the filter keys :)...v2 probably
 	var filteredResult []models.LocationData
-	r, err := regexp.Compile(title)
+	r, err := regexp.Compile( "(?i)"+ title)
 	fmt.Println(err)
 	fmt.Println(r)
 	if r == nil {
